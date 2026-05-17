@@ -1,4 +1,4 @@
-name: Build APK (AIDL FIX FINAL)
+name: Build APK (SDK LEGACY COMPAT FIX)
 
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install system deps
+    - name: Install deps
       run: |
         sudo apt update
         sudo apt install -y \
@@ -35,18 +35,18 @@ jobs:
         pip install --upgrade pip
         pip install cython buildozer kivy python-for-android
 
-    # 🔥 FORCE CLEAN
     - name: Clean buildozer
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
-    # 🔥 FORCE INSTALL ANDROID BUILD-TOOLS (FIX AIDL ROOT)
-    - name: Install Android build-tools manually
+    - name: Install Android SDK (FIX LEGACY COMPAT)
       run: |
         set -e
 
         export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+
+        rm -rf $ANDROID_HOME
         mkdir -p $ANDROID_HOME
 
         cd /tmp
@@ -66,7 +66,11 @@ jobs:
           "platforms;android-34" \
           "build-tools;34.0.0"
 
-    # 🔥 FORCE BUILD (PASTI ADA AIDL)
+        # 🔥 FIX PENTING: bikin folder lama biar Buildozer gak error
+        mkdir -p $ANDROID_HOME/tools/bin
+        ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+              $ANDROID_HOME/tools/bin/sdkmanager
+
     - name: Build APK
       run: |
         buildozer -v android debug
