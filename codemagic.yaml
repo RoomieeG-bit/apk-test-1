@@ -9,23 +9,41 @@ workflows:
 
     scripts:
 
+      # =========================
+      # INSTALL DEPENDENCIES
+      # =========================
       - name: Install dependencies
         script: |
           python3 -m pip install --upgrade pip
 
+          # 🔥 FIX DISTUTILS ERROR
+          pip install setuptools==69.5.1
+
+          # 🔥 BUILD TOOLS
           pip install cython==0.29.36
           pip install buildozer==1.5.0
-          pip install kivy
+
+          # 🔥 KIVY
+          pip install kivy==2.3.0
           pip install kivymd
 
+      # =========================
+      # CLEAN CACHE
+      # =========================
       - name: Clean old cache
         script: |
           rm -rf .buildozer
           rm -rf ~/.buildozer
 
+      # =========================
+      # BUILD APK
+      # =========================
       - name: Build APK
         script: |
           buildozer android debug
 
+    # =========================
+    # APK OUTPUT
+    # =========================
     artifacts:
       - bin/*.apk
