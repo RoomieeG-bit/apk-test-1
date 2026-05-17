@@ -1,4 +1,4 @@
-name: Build APK (STABLE FIX AIDL + SDK)
+name: Build APK (FULL FIX STABLE)
 
 on:
   workflow_dispatch:
@@ -50,13 +50,15 @@ jobs:
         pip install cython buildozer kivy python-for-android
 
     # =========================
-    # INSTALL ANDROID SDK (FIX CMDLINE TOOLS + AIDL ROOT CAUSE FIX)
+    # ANDROID SDK (FIX CMDLINE TOOLS + AIDL ROOT FIX)
     # =========================
-    - name: Install Android SDK (FIXED)
+    - name: Install Android SDK (FIXED FULL)
       run: |
         set -e
 
-        mkdir -p $ANDROID_SDK_ROOT
+        export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+
+        rm -rf $ANDROID_SDK_ROOT/cmdline-tools
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
 
         cd $ANDROID_SDK_ROOT
@@ -65,25 +67,33 @@ jobs:
         unzip -q cmdline.zip
         rm cmdline.zip
 
-        # FIX STRUCTURE (NO DOUBLE NESTING)
-        rm -rf $ANDROID_SDK_ROOT/cmdline-tools/latest
-        mv cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+        # 🔥 FIX PENTING: pindahin ISI folder, bukan foldernya
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
 
+        mv cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
+
+        rm -rf cmdline-tools
+
+        # PATH FIX
         export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+        export PATH=$ANDROID_SDK_ROOT/platform-tools:$PATH
 
+        # LICENSE FIX
         yes | sdkmanager --licenses || true
 
+        # UPDATE SDK
         sdkmanager --update
 
+        # INSTALL REQUIRED COMPONENTS (FIX AIDL ROOT CAUSE)
         sdkmanager \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0"
 
     # =========================
-    # EXPORT ENV (IMPORTANT FOR BUILD)
+    # EXPORT ENV FOR BUILDOZER
     # =========================
-    - name: Export env
+    - name: Export environment
       run: |
         echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
         echo "ANDROIDAPI=34" >> $GITHUB_ENV
@@ -93,7 +103,7 @@ jobs:
     # =========================
     # CLEAN BUILD
     # =========================
-    - name: Clean build
+    - name: Clean buildozer cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
