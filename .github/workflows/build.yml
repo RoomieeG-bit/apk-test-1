@@ -1,4 +1,4 @@
-name: Build APK (FINAL WORKFLOW FIXED)
+name: Build APK (NO AIDL ERROR FIX)
 
 on:
   workflow_dispatch:
@@ -10,86 +10,42 @@ jobs:
     env:
       BUILDOZER_ALLOW_ROOT: 1
       DEBIAN_FRONTEND: noninteractive
+      ANDROIDMINAPI: 24
 
     steps:
-    # =========================
-    # CHECKOUT
-    # =========================
-    - name: Checkout repo
+    - name: Checkout
       uses: actions/checkout@v4
 
-    # =========================
-    # PYTHON SETUP
-    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    # =========================
-    # SYSTEM DEPENDENCIES
-    # =========================
-    - name: Install system dependencies
+    - name: Install system deps
       run: |
         sudo apt update
         sudo apt install -y \
-        git zip unzip wget curl \
-        openjdk-17-jdk \
+        git zip unzip openjdk-17-jdk \
         build-essential \
-        autoconf automake libtool m4 pkg-config \
+        autoconf automake libtool m4 \
         libffi-dev libssl-dev python3-dev \
         cmake
 
-    # =========================
-    # INSTALL BUILDOZER
-    # =========================
     - name: Install Buildozer
       run: |
         pip install --upgrade pip
         pip install cython==0.29.36 buildozer==1.5.0
 
-    # =========================
-    # CLEAN CACHE (IMPORTANT)
-    # =========================
-    - name: Clean cache
+    - name: Clean buildozer cache (IMPORTANT)
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
-    # =========================
-    # INSTALL ANDROID SDK (FULL FIX SDKMANAGER NOT FOUND)
-    # =========================
-    - name: Setup Android SDK
-      run: |
-        mkdir -p $HOME/android-sdk
-        cd $HOME/android-sdk
-
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-        unzip commandlinetools-linux-*.zip
-
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/ || true
-
-        export ANDROID_HOME=$HOME/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-
-        yes | sdkmanager --licenses || true
-
-        sdkmanager "platform-tools"
-        sdkmanager "platforms;android-34"
-        sdkmanager "build-tools;34.0.0"
-
-    # =========================
-    # BUILD APK
-    # =========================
-    - name: Build APK
+    - name: Build APK (AUTO SDK - FIX AIDL)
       run: |
         buildozer init || true
         buildozer android debug -v
 
-    # =========================
-    # UPLOAD APK
-    # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
