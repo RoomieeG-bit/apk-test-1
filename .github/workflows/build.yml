@@ -1,4 +1,4 @@
-name: Build APK (FINAL FIX ALL)
+name: Build APK (P4A HARD RESET FIX)
 
 on:
   workflow_dispatch:
@@ -13,24 +13,15 @@ jobs:
 
     steps:
 
-    # =========================
-    # CHECKOUT
-    # =========================
-    - name: Checkout repo
+    - name: Checkout
       uses: actions/checkout@v4
 
-    # =========================
-    # PYTHON SETUP
-    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    # =========================
-    # SYSTEM DEPENDENCIES
-    # =========================
-    - name: Install system dependencies
+    - name: Install system deps
       run: |
         sudo apt update
         sudo apt install -y \
@@ -39,35 +30,30 @@ jobs:
           build-essential autoconf automake libtool m4 \
           libffi-dev libssl-dev python3-dev cmake
 
-    # =========================
-    # PYTHON PACKAGES
-    # =========================
-    - name: Install Python tools
+    - name: Install Python tools (PIN VERSION)
       run: |
         pip install --upgrade pip
-        pip install cython buildozer kivy python-for-android
+        pip install cython
+        pip install buildozer==1.5.0
+        pip install python-for-android==2023.9.16
+        pip install kivy
 
-    # =========================
-    # CLEAN BUILDOZER TOTAL (IMPORTANT FIX AIDL ISSUE)
-    # =========================
-    - name: Clean Buildozer completely
+    # 🔥 HARD RESET PENTING
+    - name: Clean ALL buildozer cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
-    # =========================
-    # BUILD APK
-    # =========================
+    # 🔥 FORCE RECREATE P4A
+    - name: Force recreate p4a
+      run: |
+        buildozer android clean || true
+        rm -rf .buildozer/android/platform/python-for-android || true
+
     - name: Build APK
       run: |
-        set -e
-
-        buildozer android clean
         buildozer -v android debug
 
-    # =========================
-    # UPLOAD APK
-    # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
