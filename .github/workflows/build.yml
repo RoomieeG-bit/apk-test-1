@@ -1,4 +1,4 @@
-name: Build APK (AIDL FIX FINAL)
+name: Build APK (NO CLEAN CRASH FIX)
 
 on:
   workflow_dispatch:
@@ -35,14 +35,19 @@ jobs:
         pip install --upgrade pip
         pip install cython==0.29.36 buildozer==1.5.0
 
-    - name: Clean cache
+    - name: Clean old cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
-    - name: Build APK (FORCE REBUILD SDK)
+    # 🔥 INIT FIRST (INI YANG HILANG SEBELUMNYA)
+    - name: Initialize Buildozer
       run: |
-        buildozer android clean
+        buildozer init || true
+
+    # 🔥 BUILD LANGSUNG (JANGAN CLEAN MANUAL)
+    - name: Build APK
+      run: |
         buildozer android debug -v
 
     - name: Upload APK
