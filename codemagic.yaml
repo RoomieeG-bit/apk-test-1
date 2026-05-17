@@ -16,31 +16,58 @@ workflows:
         script: |
           python3 -m pip install --upgrade pip
 
-          # 🔥 FIX DISTUTILS ERROR
           pip install setuptools==69.5.1
 
-          # 🔥 BUILD TOOLS
           pip install cython==0.29.36
           pip install buildozer==1.5.0
 
-          # 🔥 KIVY
           pip install kivy==2.3.0
           pip install kivymd
 
       # =========================
       # CLEAN CACHE
       # =========================
-      - name: Clean old cache
+      - name: Clean cache
         script: |
           rm -rf .buildozer
           rm -rf ~/.buildozer
+
+      # =========================
+      # PATCH BUILDOZER.SPEC
+      # =========================
+      - name: Patch buildozer.spec
+        script: |
+
+          sed -i.bak 's/android.api = .*/android.api = 34/g' buildozer.spec || true
+
+          sed -i.bak 's/android.minapi = .*/android.minapi = 21/g' buildozer.spec || true
+
+          # 🔥 FORCE BUILD TOOLS 34
+          if ! grep -q "android.sdk =" buildozer.spec; then
+            echo "android.sdk = 34" >> buildozer.spec
+          fi
+
+          if ! grep -q "android.ndk =" buildozer.spec; then
+            echo "android.ndk = 25b" >> buildozer.spec
+          fi
+
+          # 🔥 STOP BUILDTOOLS 37 CHAOS
+          if ! grep -q "android.accept_sdk_license" buildozer.spec; then
+            echo "android.accept_sdk_license = True" >> buildozer.spec
+          fi
 
       # =========================
       # BUILD APK
       # =========================
       - name: Build APK
         script: |
-          buildozer android debug
+
+          export ANDROIDAPI=34
+          export ANDROIDMINAPI=21
+
+          buildozer android clean
+
+          buildozer -v android debug
 
     # =========================
     # APK OUTPUT
