@@ -1,4 +1,4 @@
-name: Build APK (Python-for-Android)
+name: Build APK (Stable P4A)
 
 on:
   workflow_dispatch:
@@ -8,50 +8,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # =========================
+    # 1. CHECKOUT
+    # =========================
     - name: Checkout repo
       uses: actions/checkout@v4
 
+    # =========================
+    # 2. PYTHON SETUP
+    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
+    # =========================
+    # 3. SYSTEM DEPENDENCIES (FIX AUTOTOOLS ERROR)
+    # =========================
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk \
-        build-essential libffi-dev libssl-dev python3-dev wget
+        sudo apt install -y \
+        git zip unzip wget curl \
+        openjdk-17-jdk \
+        build-essential \
+        autoconf automake libtool m4 pkg-config \
+        libffi-dev libssl-dev python3-dev \
+        cmake
 
+    # =========================
+    # 4. PYTHON DEPENDENCIES
+    # =========================
     - name: Install Python tools
       run: |
         pip install --upgrade pip
-        pip install cython python-for-android kivy
+        pip install cython kivy python-for-android
 
-    - name: Install Android SDK (FIX API + AIDL SAFE)
+    # =========================
+    # 5. FIX AUTOTOOLS CACHE (IMPORTANT FOR LIBFFI ERROR)
+    # =========================
+    - name: Fix autotools
       run: |
-        mkdir -p $HOME/android-sdk
-        cd $HOME/android-sdk
+        autoreconf --install || true
 
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-        unzip commandlinetools-linux-*.zip
-
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/ || true
-
-        export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
-
-        yes | sdkmanager --licenses
-
-        sdkmanager "platform-tools"
-        sdkmanager "platforms;android-33"
-        sdkmanager "build-tools;33.0.2"
-
+    # =========================
+    # 6. BUILD APK USING P4A
+    # =========================
     - name: Build APK
       run: |
-        export ANDROIDSDK=$HOME/android-sdk
-        export ANDROID_HOME=$HOME/android-sdk
-        export PATH=$PATH:$ANDROIDSDK/platform-tools
-
         p4a apk \
           --private . \
           --package=org.example.myapp \
@@ -61,6 +65,9 @@ jobs:
           --requirements=python3,kivy \
           --arch=arm64-v8a
 
+    # =========================
+    # 7. UPLOAD RESULT
+    # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
