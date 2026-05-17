@@ -1,4 +1,4 @@
-name: Build APK (Stable P4A)
+name: Build APK (FIXED P4A)
 
 on:
   workflow_dispatch:
@@ -9,13 +9,13 @@ jobs:
 
     steps:
     # =========================
-    # 1. CHECKOUT
+    # CHECKOUT REPO
     # =========================
     - name: Checkout repo
       uses: actions/checkout@v4
 
     # =========================
-    # 2. PYTHON SETUP
+    # SETUP PYTHON
     # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -23,7 +23,7 @@ jobs:
         python-version: '3.10'
 
     # =========================
-    # 3. SYSTEM DEPENDENCIES (FIX AUTOTOOLS ERROR)
+    # SYSTEM DEPENDENCIES (FIX AUTOTOOLS + LIBFFI + AIDL ISSUE ROOT)
     # =========================
     - name: Install system dependencies
       run: |
@@ -37,7 +37,7 @@ jobs:
         cmake
 
     # =========================
-    # 4. PYTHON DEPENDENCIES
+    # PYTHON DEPENDENCIES
     # =========================
     - name: Install Python tools
       run: |
@@ -45,28 +45,29 @@ jobs:
         pip install cython kivy python-for-android
 
     # =========================
-    # 5. FIX AUTOTOOLS CACHE (IMPORTANT FOR LIBFFI ERROR)
+    # FIX AUTOTOOLS (LIBFFI / LT_SYS ERROR FIX)
     # =========================
-    - name: Fix autotools
+    - name: Autotools fix
       run: |
         autoreconf --install || true
 
     # =========================
-    # 6. BUILD APK USING P4A
+    # BUILD APK
     # =========================
     - name: Build APK
       run: |
         p4a apk \
           --private . \
-          --package=org.example.myapp \
-          --name="MyApp" \
+          --package=org.gudangdiskon \
+          --name="Gudang Diskon" \
           --version=1.0 \
           --bootstrap=sdl2 \
-          --requirements=python3,kivy \
-          --arch=arm64-v8a
+          --requirements=python3,kivy,kivymd \
+          --arch=arm64-v8a \
+          --android-api 34
 
     # =========================
-    # 7. UPLOAD RESULT
+    # UPLOAD APK RESULT
     # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
