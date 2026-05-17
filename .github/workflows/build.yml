@@ -1,4 +1,4 @@
-name: Build APK (FINAL REAL FIX)
+name: Build APK (ULTIMATE P4A FIX)
 
 on:
   workflow_dispatch:
@@ -59,7 +59,7 @@ jobs:
         pip install --upgrade pip
 
         pip install \
-          cython \
+          cython==0.29.36 \
           buildozer==1.5.0 \
           python-for-android==2023.9.16 \
           kivy
@@ -67,10 +67,29 @@ jobs:
     # =========================
     # CLEAN CACHE
     # =========================
-    - name: Clean buildozer cache
+    - name: Clean everything
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
+
+    # =========================
+    # CREATE BUILDOZER STRUCTURE
+    # =========================
+    - name: Prepare directories
+      run: |
+        mkdir -p .buildozer/android/platform
+
+    # =========================
+    # CLONE PYTHON-FOR-ANDROID MANUALLY
+    # =========================
+    - name: Clone python-for-android manually
+      run: |
+        git clone https://github.com/kivy/python-for-android.git \
+          .buildozer/android/platform/python-for-android
+
+        cd .buildozer/android/platform/python-for-android
+
+        git checkout 2023.9.16
 
     # =========================
     # INSTALL ANDROID SDK
@@ -93,36 +112,23 @@ jobs:
 
         unzip -q cmdline.zip
 
-        # 🔥 ANTI latest/latest BUG
         mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
 
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
-        # =========================
-        # ACCEPT LICENSES
-        # =========================
         yes | sdkmanager --licenses || true
 
-        # =========================
-        # INSTALL SDK PACKAGES
-        # =========================
         sdkmanager --sdk_root=$ANDROID_HOME \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0"
 
-        # =========================
-        # LEGACY FIX FOR BUILDOZER
-        # =========================
         mkdir -p $ANDROID_HOME/tools/bin
 
         ln -sf \
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
           $ANDROID_HOME/tools/bin/sdkmanager
 
-        # =========================
-        # VERIFY AIDL EXISTS
-        # =========================
         ls $ANDROID_HOME/build-tools/34.0.0/aidl
 
     # =========================
@@ -150,8 +156,6 @@ jobs:
       run: |
         export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-
-        buildozer android clean
 
         buildozer -v android debug
 
