@@ -1,4 +1,4 @@
-name: Build APK FIX FINAL
+name: Build APK FIX AIDL FINAL
 
 on:
   workflow_dispatch:
@@ -12,44 +12,34 @@ jobs:
       BUILDOZER_ALLOW_ROOT: 1
       ANDROIDSDK: ${{ github.workspace }}/android-sdk
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
 
     steps:
-    # =========================
-    # CHECKOUT
-    # =========================
-    - name: Checkout repo
+
+    - name: Checkout
       uses: actions/checkout@v4
 
-    # =========================
-    # PYTHON
-    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
-    # =========================
-    # SYSTEM DEPENDENCIES
-    # =========================
-    - name: Install system deps
+    - name: Install deps
       run: |
         sudo apt update
         sudo apt install -y git zip unzip wget curl openjdk-17-jdk \
         build-essential autoconf automake libtool m4 \
         libffi-dev libssl-dev python3-dev cmake
 
-    # =========================
-    # PYTHON DEPENDENCIES
-    # =========================
-    - name: Install Python deps
+    - name: Install Python tools
       run: |
         pip install --upgrade pip
         pip install cython==0.29.36 buildozer==1.5.0
 
     # =========================
-    # ANDROID SDK (LOCK BUILD TOOLS 34)
+    # ANDROID SDK FIXED LOCATION
     # =========================
-    - name: Install Android SDK (NO 37)
+    - name: Install Android SDK (FORCED PATH)
       run: |
         mkdir -p $ANDROIDSDK
         cd $ANDROIDSDK
@@ -68,42 +58,30 @@ jobs:
           "build-tools;34.0.0"
 
     # =========================
-    # CLEAN CACHE
+    # FORCE BUILDOZER TO USE SAME SDK
     # =========================
-    - name: Clean build cache
+    - name: Link SDK to Buildozer
+      run: |
+        mkdir -p ~/.buildozer/android/platform
+        ln -s $ANDROIDSDK ~/.buildozer/android/platform/android-sdk || true
+
+    - name: Clean
       run: |
         rm -rf .buildozer
-        rm -rf ~/.buildozer
         rm -rf bin
 
     # =========================
-    # BUILD APK (FIX ENV DI SINI)
+    # BUILD
     # =========================
     - name: Build APK
       run: |
         export ANDROIDAPI=34
         export ANDROIDMINAPI=21
-        export ANDROIDSDK=$ANDROID_HOME
+        export ANDROIDSDK=$ANDROIDSDK
+        export ANDROID_SDK_ROOT=$ANDROIDSDK
 
-        echo "START BUILD"
         buildozer android debug -v
 
-    # =========================
-    # DEBUG OUTPUT
-    # =========================
-    - name: Check output
+    - name: Debug output
       run: |
-        echo "=== BIN ==="
         ls -R bin || true
-
-        echo "=== BUILDOZER ==="
-        ls -R .buildozer || true
-
-    # =========================
-    # UPLOAD APK
-    # =========================
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: apk
-        path: bin/*.apk
