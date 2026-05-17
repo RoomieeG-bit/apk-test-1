@@ -1,4 +1,4 @@
-name: Build APK (FINAL FIXED)
+name: Build APK (Kivy Stable)
 
 on:
   workflow_dispatch:
@@ -6,10 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    env:
-      BUILDOZER_ALLOW_ROOT: 1
-      DEBIAN_FRONTEND: noninteractive
 
     steps:
     # =========================
@@ -19,7 +15,7 @@ jobs:
       uses: actions/checkout@v4
 
     # =========================
-    # PYTHON SETUP
+    # PYTHON
     # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -27,43 +23,48 @@ jobs:
         python-version: '3.10'
 
     # =========================
-    # SYSTEM DEPENDENCIES (FULL FIX AUTOTOOLS + LIBTOOL + AIDL SAFE)
+    # DEPENDENCIES
     # =========================
-    - name: Install system dependencies
+    - name: Install dependencies
       run: |
         sudo apt update
         sudo apt install -y \
-        git zip unzip wget curl \
-        openjdk-17-jdk \
+        git zip unzip openjdk-17-jdk \
         build-essential \
-        autoconf automake libtool m4 pkg-config \
+        autoconf automake libtool m4 \
         libffi-dev libssl-dev python3-dev \
         cmake
 
     # =========================
-    # PYTHON TOOLS
+    # INSTALL BUILDOZER (PIN VERSION BIAR STABIL)
     # =========================
-    - name: Install Python tools
+    - name: Install Buildozer
       run: |
         pip install --upgrade pip
-        pip install cython kivy buildozer
+        pip install cython==0.29.36
+        pip install buildozer==1.5.0
 
     # =========================
-    # FIX AUTOTOOLS (LIBFFI / LT_MACRO ERROR HANDLER)
+    # CLEAN CACHE (IMPORTANT)
     # =========================
-    - name: Autotools fix
+    - name: Clean cache
       run: |
-        autoreconf --install || true
+        rm -rf .buildozer
+        rm -rf ~/.buildozer
 
     # =========================
-    # BUILD APK (NO PROMPT / NO EOF ERROR FIX)
+    # BUILD APK
     # =========================
     - name: Build APK
+      env:
+        BUILDOZER_ALLOW_ROOT: 1
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        yes | buildozer android debug --verbose
+        buildozer init || true
+        buildozer android debug -v
 
     # =========================
-    # UPLOAD APK RESULT
+    # UPLOAD APK
     # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
