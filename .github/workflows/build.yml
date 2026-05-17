@@ -1,4 +1,4 @@
-name: Build APK (FINAL STABLE CLEAN)
+name: Build APK (FINAL WORKFLOW FIXED)
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ jobs:
         python-version: '3.10'
 
     # =========================
-    # SYSTEM DEPENDENCIES (FULL TOOLCHAIN)
+    # SYSTEM DEPENDENCIES
     # =========================
     - name: Install system dependencies
       run: |
@@ -49,25 +49,35 @@ jobs:
         pip install cython==0.29.36 buildozer==1.5.0
 
     # =========================
-    # CLEAN CACHE (FIX CORRUPT ENV)
+    # CLEAN CACHE (IMPORTANT)
     # =========================
-    - name: Clean build cache
+    - name: Clean cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
     # =========================
-    # INSTALL ANDROID SDK + ACCEPT LICENSES + FIX AIDL
+    # INSTALL ANDROID SDK (FULL FIX SDKMANAGER NOT FOUND)
     # =========================
     - name: Setup Android SDK
       run: |
+        mkdir -p $HOME/android-sdk
+        cd $HOME/android-sdk
+
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip commandlinetools-linux-*.zip
+
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* cmdline-tools/latest/ || true
+
+        export ANDROID_HOME=$HOME/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
         yes | sdkmanager --licenses || true
 
         sdkmanager "platform-tools"
         sdkmanager "platforms;android-34"
         sdkmanager "build-tools;34.0.0"
-
-        sdkmanager --list | grep "build-tools" || true
 
     # =========================
     # BUILD APK
