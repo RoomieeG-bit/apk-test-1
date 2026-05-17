@@ -1,4 +1,4 @@
-name: Build APK (NO SDK OVERRIDE)
+name: Build APK FIX FINAL
 
 on:
   workflow_dispatch:
@@ -8,21 +8,29 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      BUILDOZER_ALLOW_ROOT: 1
       DEBIAN_FRONTEND: noninteractive
+      BUILDOZER_ALLOW_ROOT: 1
       ANDROIDSDK: ${{ github.workspace }}/android-sdk
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      P4A_ANDROIDSDK: ${{ github.workspace }}/android-sdk
 
     steps:
-    - name: Checkout
+    # =========================
+    # CHECKOUT
+    # =========================
+    - name: Checkout repo
       uses: actions/checkout@v4
 
+    # =========================
+    # PYTHON
+    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
+    # =========================
+    # SYSTEM DEPENDENCIES
+    # =========================
     - name: Install system deps
       run: |
         sudo apt update
@@ -30,17 +38,20 @@ jobs:
         build-essential autoconf automake libtool m4 \
         libffi-dev libssl-dev python3-dev cmake
 
+    # =========================
+    # PYTHON DEPENDENCIES
+    # =========================
     - name: Install Python deps
       run: |
         pip install --upgrade pip
         pip install cython==0.29.36 buildozer==1.5.0
 
     # =========================
-    # MANUAL ANDROID SDK (LOCK 34)
+    # ANDROID SDK (LOCK BUILD TOOLS 34)
     # =========================
-    - name: Install Android SDK MANUAL (LOCKED)
+    - name: Install Android SDK (NO 37)
       run: |
-        mkdir -p $ANDROIDSDK/cmdline-tools
+        mkdir -p $ANDROIDSDK
         cd $ANDROIDSDK
 
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
@@ -57,23 +68,42 @@ jobs:
           "build-tools;34.0.0"
 
     # =========================
-    # CRITICAL FIX: DISABLE BUILDOZER SDK AUTO-INSTALL
+    # CLEAN CACHE
     # =========================
-    - name: Force buildozer config override
-      run: |
-        mkdir -p .buildozer
-        echo "[app]" > buildozer.spec.tmp || true
-
-    - name: Clean cache
+    - name: Clean build cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
         rm -rf bin
 
-    - name: Build APK (NO SDK REINSTALL)
+    # =========================
+    # BUILD APK (FIX ENV DI SINI)
+    # =========================
+    - name: Build APK
       run: |
+        export ANDROIDAPI=34
+        export ANDROIDMINAPI=21
+        export ANDROIDSDK=$ANDROID_HOME
+
+        echo "START BUILD"
         buildozer android debug -v
 
-    - name: Debug output
+    # =========================
+    # DEBUG OUTPUT
+    # =========================
+    - name: Check output
       run: |
+        echo "=== BIN ==="
         ls -R bin || true
+
+        echo "=== BUILDOZER ==="
+        ls -R .buildozer || true
+
+    # =========================
+    # UPLOAD APK
+    # =========================
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: apk
+        path: bin/*.apk
