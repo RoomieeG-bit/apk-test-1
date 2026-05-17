@@ -1,4 +1,4 @@
-name: Build APK (OFFICIAL STABLE)
+name: Build APK (FINAL FIXED)
 
 on:
   workflow_dispatch:
@@ -7,17 +7,64 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    container:
-      image: kivy/buildozer:latest
+    env:
+      BUILDOZER_ALLOW_ROOT: 1
+      DEBIAN_FRONTEND: noninteractive
 
     steps:
-    - name: Checkout
+    # =========================
+    # CHECKOUT REPO
+    # =========================
+    - name: Checkout repo
       uses: actions/checkout@v4
 
+    # =========================
+    # PYTHON SETUP
+    # =========================
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    # =========================
+    # SYSTEM DEPENDENCIES (FULL FIX AUTOTOOLS + LIBTOOL + AIDL SAFE)
+    # =========================
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+        git zip unzip wget curl \
+        openjdk-17-jdk \
+        build-essential \
+        autoconf automake libtool m4 pkg-config \
+        libffi-dev libssl-dev python3-dev \
+        cmake
+
+    # =========================
+    # PYTHON TOOLS
+    # =========================
+    - name: Install Python tools
+      run: |
+        pip install --upgrade pip
+        pip install cython kivy buildozer
+
+    # =========================
+    # FIX AUTOTOOLS (LIBFFI / LT_MACRO ERROR HANDLER)
+    # =========================
+    - name: Autotools fix
+      run: |
+        autoreconf --install || true
+
+    # =========================
+    # BUILD APK (NO PROMPT / NO EOF ERROR FIX)
+    # =========================
     - name: Build APK
       run: |
-        buildozer android debug
+        yes | buildozer android debug --verbose
 
+    # =========================
+    # UPLOAD APK RESULT
+    # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
