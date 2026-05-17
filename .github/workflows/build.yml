@@ -1,4 +1,4 @@
-name: Build APK (FIXED STABLE AIDL)
+name: Build APK (STABLE FIX AIDL + SDK)
 
 on:
   workflow_dispatch:
@@ -8,11 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      BUILDOZER_ALLOW_ROOT: 1
       DEBIAN_FRONTEND: noninteractive
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      BUILDOZER_ALLOW_ROOT: 1
 
     steps:
+
     # =========================
     # CHECKOUT
     # =========================
@@ -30,7 +32,7 @@ jobs:
     # =========================
     # SYSTEM DEPENDENCIES
     # =========================
-    - name: Install system deps
+    - name: Install system dependencies
       run: |
         sudo apt update
         sudo apt install -y \
@@ -40,7 +42,7 @@ jobs:
           libffi-dev libssl-dev python3-dev cmake
 
     # =========================
-    # INSTALL PYTHON TOOLS
+    # PYTHON PACKAGES
     # =========================
     - name: Install Python tools
       run: |
@@ -48,23 +50,30 @@ jobs:
         pip install cython buildozer kivy python-for-android
 
     # =========================
-    # INSTALL ANDROID SDK (CMDLINE TOOLS FIX AIDL ROOT CAUSE)
+    # INSTALL ANDROID SDK (FIX CMDLINE TOOLS + AIDL ROOT CAUSE FIX)
     # =========================
-    - name: Install Android SDK
+    - name: Install Android SDK (FIXED)
       run: |
+        set -e
+
+        mkdir -p $ANDROID_SDK_ROOT
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+
         cd $ANDROID_SDK_ROOT
 
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline.zip
         unzip -q cmdline.zip
         rm cmdline.zip
 
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-        mv cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
+        # FIX STRUCTURE (NO DOUBLE NESTING)
+        rm -rf $ANDROID_SDK_ROOT/cmdline-tools/latest
+        mv cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
 
         export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
         yes | sdkmanager --licenses || true
+
+        sdkmanager --update
 
         sdkmanager \
           "platform-tools" \
@@ -72,19 +81,19 @@ jobs:
           "build-tools;34.0.0"
 
     # =========================
-    # FORCE ENV (IMPORTANT FIX AIDL)
+    # EXPORT ENV (IMPORTANT FOR BUILD)
     # =========================
-    - name: Export Android env
+    - name: Export env
       run: |
         echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
         echo "ANDROIDAPI=34" >> $GITHUB_ENV
         echo "ANDROIDMINAPI=21" >> $GITHUB_ENV
+        echo "PATH=$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
 
     # =========================
-    # CLEAN
+    # CLEAN BUILD
     # =========================
-    - name: Clean buildozer
+    - name: Clean build
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
@@ -94,7 +103,7 @@ jobs:
     # =========================
     - name: Build APK
       run: |
-        buildozer android debug -v
+        buildozer -v android debug
 
     # =========================
     # UPLOAD APK
