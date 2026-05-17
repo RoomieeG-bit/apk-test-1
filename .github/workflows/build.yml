@@ -1,4 +1,4 @@
-name: Build APK FIX FINAL AIDL + SDK
+name: Build APK (FIXED STABLE AIDL)
 
 on:
   workflow_dispatch:
@@ -8,14 +8,11 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DEBIAN_FRONTEND: noninteractive
       BUILDOZER_ALLOW_ROOT: 1
-      ANDROIDSDK: ${{ github.workspace }}/android-sdk
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      DEBIAN_FRONTEND: noninteractive
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
-
     # =========================
     # CHECKOUT
     # =========================
@@ -28,7 +25,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.10"
+        python-version: '3.10'
 
     # =========================
     # SYSTEM DEPENDENCIES
@@ -36,31 +33,36 @@ jobs:
     - name: Install system deps
       run: |
         sudo apt update
-        sudo apt install -y git zip unzip wget curl openjdk-17-jdk \
-        build-essential autoconf automake libtool m4 \
-        libffi-dev libssl-dev python3-dev cmake
+        sudo apt install -y \
+          git zip unzip wget curl \
+          openjdk-17-jdk \
+          build-essential autoconf automake libtool m4 \
+          libffi-dev libssl-dev python3-dev cmake
 
     # =========================
-    # PYTHON DEPENDENCIES
+    # INSTALL PYTHON TOOLS
     # =========================
     - name: Install Python tools
       run: |
         pip install --upgrade pip
-        pip install cython==0.29.36 buildozer==1.5.0
+        pip install cython buildozer kivy python-for-android
 
     # =========================
-    # INSTALL ANDROID SDK (CMDLINE TOOLS)
+    # INSTALL ANDROID SDK (CMDLINE TOOLS FIX AIDL ROOT CAUSE)
     # =========================
     - name: Install Android SDK
       run: |
-        mkdir -p $ANDROIDSDK
-        cd $ANDROIDSDK
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        cd $ANDROID_SDK_ROOT
 
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-        unzip -q commandlinetools-linux-*.zip -d cmdline-tools
-        mv cmdline-tools/cmdline-tools cmdline-tools/latest
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline.zip
+        unzip -q cmdline.zip
+        rm cmdline.zip
 
-        export PATH=$ANDROIDSDK/cmdline-tools/latest/bin:$PATH
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
+        mv cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
+
+        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
         yes | sdkmanager --licenses || true
 
@@ -70,53 +72,29 @@ jobs:
           "build-tools;34.0.0"
 
     # =========================
-    # FIX SDKMANAGER PATH (IMPORTANT)
+    # FORCE ENV (IMPORTANT FIX AIDL)
     # =========================
-    - name: Fix sdkmanager path for Buildozer
+    - name: Export Android env
       run: |
-        mkdir -p $ANDROIDSDK/tools/bin
-        ln -sf $ANDROIDSDK/cmdline-tools/latest/bin/sdkmanager \
-              $ANDROIDSDK/tools/bin/sdkmanager
+        echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "ANDROIDAPI=34" >> $GITHUB_ENV
+        echo "ANDROIDMINAPI=21" >> $GITHUB_ENV
 
     # =========================
-    # LINK SDK TO BUILDOZER (CRITICAL FIX)
+    # CLEAN
     # =========================
-    - name: Force Buildozer SDK path
-      run: |
-        mkdir -p ~/.buildozer/android/platform
-        ln -sf $ANDROIDSDK ~/.buildozer/android/platform/android-sdk
-
-    # =========================
-    # CLEAN CACHE
-    # =========================
-    - name: Clean build cache
+    - name: Clean buildozer
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
-        rm -rf bin
 
     # =========================
     # BUILD APK
     # =========================
     - name: Build APK
       run: |
-        export ANDROIDAPI=34
-        export ANDROIDMINAPI=21
-        export ANDROIDSDK=$ANDROIDSDK
-        export ANDROID_SDK_ROOT=$ANDROIDSDK
-
         buildozer android debug -v
-
-    # =========================
-    # DEBUG OUTPUT
-    # =========================
-    - name: Check output
-      run: |
-        echo "=== APK BIN ==="
-        ls -R bin || true
-
-        echo "=== BUILDOZER FOLDER ==="
-        ls -R .buildozer || true
 
     # =========================
     # UPLOAD APK
