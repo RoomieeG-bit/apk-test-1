@@ -1,4 +1,4 @@
-name: Build APK (SDK LEGACY COMPAT FIX)
+name: Build APK (FINAL REAL FIX)
 
 on:
   workflow_dispatch:
@@ -13,68 +13,151 @@ jobs:
 
     steps:
 
+    # =========================
+    # CHECKOUT
+    # =========================
     - name: Checkout
       uses: actions/checkout@v4
 
+    # =========================
+    # PYTHON
+    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
+    # =========================
+    # SYSTEM DEPENDENCIES
+    # =========================
     - name: Install deps
       run: |
         sudo apt update
-        sudo apt install -y \
-          git zip unzip wget curl \
-          openjdk-17-jdk \
-          build-essential autoconf automake libtool m4 \
-          libffi-dev libssl-dev python3-dev cmake
 
+        sudo apt install -y \
+          git \
+          zip \
+          unzip \
+          wget \
+          curl \
+          openjdk-17-jdk \
+          build-essential \
+          autoconf \
+          automake \
+          libtool \
+          m4 \
+          libffi-dev \
+          libssl-dev \
+          python3-dev \
+          cmake
+
+    # =========================
+    # PYTHON TOOLS
+    # =========================
     - name: Install Python tools
       run: |
         pip install --upgrade pip
-        pip install cython buildozer kivy python-for-android
 
-    - name: Clean buildozer
+        pip install \
+          cython \
+          buildozer==1.5.0 \
+          python-for-android==2023.9.16 \
+          kivy
+
+    # =========================
+    # CLEAN CACHE
+    # =========================
+    - name: Clean buildozer cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
-    - name: Install Android SDK (FIX LEGACY COMPAT)
+    # =========================
+    # INSTALL ANDROID SDK
+    # =========================
+    - name: Install Android SDK
       run: |
         set -e
 
         export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
 
         rm -rf $ANDROID_HOME
-        mkdir -p $ANDROID_HOME
+
+        mkdir -p $ANDROID_HOME/cmdline-tools
 
         cd /tmp
 
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline.zip
+        wget -q \
+          https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+          -O cmdline.zip
+
         unzip -q cmdline.zip
 
-        mkdir -p $ANDROID_HOME/cmdline-tools/latest
-        mv cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
+        # 🔥 ANTI latest/latest BUG
+        mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
 
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
+        # =========================
+        # ACCEPT LICENSES
+        # =========================
         yes | sdkmanager --licenses || true
 
+        # =========================
+        # INSTALL SDK PACKAGES
+        # =========================
         sdkmanager --sdk_root=$ANDROID_HOME \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0"
 
-        # 🔥 FIX PENTING: bikin folder lama biar Buildozer gak error
+        # =========================
+        # LEGACY FIX FOR BUILDOZER
+        # =========================
         mkdir -p $ANDROID_HOME/tools/bin
-        ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-              $ANDROID_HOME/tools/bin/sdkmanager
 
+        ln -sf \
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+          $ANDROID_HOME/tools/bin/sdkmanager
+
+        # =========================
+        # VERIFY AIDL EXISTS
+        # =========================
+        ls $ANDROID_HOME/build-tools/34.0.0/aidl
+
+    # =========================
+    # PATCH buildozer.spec
+    # =========================
+    - name: Patch buildozer.spec
+      run: |
+
+        sed -i 's/android.api = .*/android.api = 34/g' buildozer.spec || true
+
+        sed -i 's/android.minapi = .*/android.minapi = 21/g' buildozer.spec || true
+
+        if ! grep -q "android.sdk =" buildozer.spec; then
+          echo "android.sdk = 34" >> buildozer.spec
+        fi
+
+        if ! grep -q "android.ndk =" buildozer.spec; then
+          echo "android.ndk = 25b" >> buildozer.spec
+        fi
+
+    # =========================
+    # BUILD APK
+    # =========================
     - name: Build APK
       run: |
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+        buildozer android clean
+
         buildozer -v android debug
 
+    # =========================
+    # UPLOAD APK
+    # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
