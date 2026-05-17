@@ -12,36 +12,62 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
 
     steps:
-    - name: Checkout
+    # =========================
+    # GET REPO
+    # =========================
+    - name: Checkout repository
       uses: actions/checkout@v4
 
+    # =========================
+    # PYTHON
+    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.10
+        python-version: "3.10"
 
-    - name: Install system deps
+    # =========================
+    # SYSTEM DEPENDENCIES
+    # =========================
+    - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk \
-        build-essential autoconf automake libtool m4 \
-        libffi-dev libssl-dev python3-dev cmake
+        sudo apt install -y \
+        git zip unzip wget curl \
+        openjdk-17-jdk \
+        build-essential \
+        autoconf automake libtool m4 \
+        libffi-dev libssl-dev python3-dev \
+        cmake
 
-    - name: Install buildozer
+    # =========================
+    # PYTHON DEPENDENCIES (LOCKED)
+    # =========================
+    - name: Install Python tools
       run: |
         pip install --upgrade pip
-        pip install cython buildozer
+        pip install cython==0.29.36 buildozer==1.5.0
 
-    - name: Clean buildozer cache
+    # =========================
+    # CLEAN EVERYTHING (IMPORTANT)
+    # =========================
+    - name: Clean build cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
+        rm -rf bin
 
+    # =========================
+    # BUILD APK
+    # =========================
     - name: Build APK
       run: |
         buildozer android debug -v
 
-    - name: Upload APK
+    # =========================
+    # UPLOAD APK
+    # =========================
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: apk
