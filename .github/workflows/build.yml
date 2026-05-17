@@ -1,4 +1,4 @@
-name: Build APK (Kivy Stable)
+name: Build APK (FINAL STABLE CLEAN)
 
 on:
   workflow_dispatch:
@@ -7,15 +7,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      BUILDOZER_ALLOW_ROOT: 1
+      DEBIAN_FRONTEND: noninteractive
+
     steps:
     # =========================
-    # CHECKOUT REPO
+    # CHECKOUT
     # =========================
     - name: Checkout repo
       uses: actions/checkout@v4
 
     # =========================
-    # PYTHON
+    # PYTHON SETUP
     # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -23,42 +27,52 @@ jobs:
         python-version: '3.10'
 
     # =========================
-    # DEPENDENCIES
+    # SYSTEM DEPENDENCIES (FULL TOOLCHAIN)
     # =========================
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt update
         sudo apt install -y \
-        git zip unzip openjdk-17-jdk \
+        git zip unzip wget curl \
+        openjdk-17-jdk \
         build-essential \
-        autoconf automake libtool m4 \
+        autoconf automake libtool m4 pkg-config \
         libffi-dev libssl-dev python3-dev \
         cmake
 
     # =========================
-    # INSTALL BUILDOZER (PIN VERSION BIAR STABIL)
+    # INSTALL BUILDOZER
     # =========================
     - name: Install Buildozer
       run: |
         pip install --upgrade pip
-        pip install cython==0.29.36
-        pip install buildozer==1.5.0
+        pip install cython==0.29.36 buildozer==1.5.0
 
     # =========================
-    # CLEAN CACHE (IMPORTANT)
+    # CLEAN CACHE (FIX CORRUPT ENV)
     # =========================
-    - name: Clean cache
+    - name: Clean build cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
     # =========================
+    # INSTALL ANDROID SDK + ACCEPT LICENSES + FIX AIDL
+    # =========================
+    - name: Setup Android SDK
+      run: |
+        yes | sdkmanager --licenses || true
+
+        sdkmanager "platform-tools"
+        sdkmanager "platforms;android-34"
+        sdkmanager "build-tools;34.0.0"
+
+        sdkmanager --list | grep "build-tools" || true
+
+    # =========================
     # BUILD APK
     # =========================
     - name: Build APK
-      env:
-        BUILDOZER_ALLOW_ROOT: 1
-        DEBIAN_FRONTEND: noninteractive
       run: |
         buildozer init || true
         buildozer android debug -v
