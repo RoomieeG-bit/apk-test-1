@@ -1,4 +1,4 @@
-name: Build APK (FIXED P4A)
+name: Build APK (OFFICIAL STABLE)
 
 on:
   workflow_dispatch:
@@ -7,70 +7,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    container:
+      image: kivy/buildozer:latest
+
     steps:
-    # =========================
-    # CHECKOUT REPO
-    # =========================
-    - name: Checkout repo
+    - name: Checkout
       uses: actions/checkout@v4
 
-    # =========================
-    # SETUP PYTHON
-    # =========================
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-
-    # =========================
-    # SYSTEM DEPENDENCIES (FIX AUTOTOOLS + LIBFFI + AIDL ISSUE ROOT)
-    # =========================
-    - name: Install system dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y \
-        git zip unzip wget curl \
-        openjdk-17-jdk \
-        build-essential \
-        autoconf automake libtool m4 pkg-config \
-        libffi-dev libssl-dev python3-dev \
-        cmake
-
-    # =========================
-    # PYTHON DEPENDENCIES
-    # =========================
-    - name: Install Python tools
-      run: |
-        pip install --upgrade pip
-        pip install cython kivy python-for-android
-
-    # =========================
-    # FIX AUTOTOOLS (LIBFFI / LT_SYS ERROR FIX)
-    # =========================
-    - name: Autotools fix
-      run: |
-        autoreconf --install || true
-
-    # =========================
-    # BUILD APK
-    # =========================
     - name: Build APK
       run: |
-        p4a apk \
-          --private . \
-          --package=org.gudangdiskon \
-          --name="Gudang Diskon" \
-          --version=1.0 \
-          --bootstrap=sdl2 \
-          --requirements=python3,kivy,kivymd \
-          --arch=arm64-v8a \
-          --android-api 34
+        buildozer android debug
 
-    # =========================
-    # UPLOAD APK RESULT
-    # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: apk
-        path: "*.apk"
+        path: bin/*.apk
