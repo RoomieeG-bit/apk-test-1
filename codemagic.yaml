@@ -1,20 +1,22 @@
 workflows:
   build-apk:
 
-    name: Roomie
+    name: Build APK
 
     environment:
-      python: 3.10
+      vars:
+        PYTHON_VERSION: "3.10"
 
     scripts:
 
       - name: Install dependencies
         script: |
-          pip install --upgrade pip
+          python3 -m pip install --upgrade pip
 
           pip install cython==0.29.36
           pip install buildozer==1.5.0
           pip install kivy
+          pip install kivymd
 
       - name: Clean old cache
         script: |
