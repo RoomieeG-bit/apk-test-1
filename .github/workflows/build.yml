@@ -1,4 +1,4 @@
-name: Build APK (FULL FIX STABLE)
+name: Build APK (ULTIMATE FIX STABLE)
 
 on:
   workflow_dispatch:
@@ -50,41 +50,42 @@ jobs:
         pip install cython buildozer kivy python-for-android
 
     # =========================
-    # ANDROID SDK (FIX CMDLINE TOOLS + AIDL ROOT FIX)
+    # CLEAN SDK TOTAL (ANTI latest/latest BUG)
     # =========================
-    - name: Install Android SDK (FIXED FULL)
+    - name: Clean Android SDK folder
+      run: |
+        rm -rf /usr/local/lib/android/sdk || true
+        mkdir -p /usr/local/lib/android/sdk
+
+    # =========================
+    # INSTALL ANDROID SDK (FIX CMDLINE TOOLS PROPER)
+    # =========================
+    - name: Install Android SDK
       run: |
         set -e
 
         export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
 
-        rm -rf $ANDROID_SDK_ROOT/cmdline-tools
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
 
-        cd $ANDROID_SDK_ROOT
+        cd /tmp
 
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline.zip
         unzip -q cmdline.zip
-        rm cmdline.zip
 
-        # 🔥 FIX PENTING: pindahin ISI folder, bukan foldernya
+        # 🔥 FIX UTAMA: jangan mv folder utama, hanya isi
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-
         mv cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
 
-        rm -rf cmdline-tools
+        rm -rf cmdline-tools cmdline.zip
 
-        # PATH FIX
         export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
         export PATH=$ANDROID_SDK_ROOT/platform-tools:$PATH
 
-        # LICENSE FIX
         yes | sdkmanager --licenses || true
 
-        # UPDATE SDK
         sdkmanager --update
 
-        # INSTALL REQUIRED COMPONENTS (FIX AIDL ROOT CAUSE)
         sdkmanager \
           "platform-tools" \
           "platforms;android-34" \
@@ -95,13 +96,13 @@ jobs:
     # =========================
     - name: Export environment
       run: |
-        echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "ANDROIDSDK=/usr/local/lib/android/sdk" >> $GITHUB_ENV
         echo "ANDROIDAPI=34" >> $GITHUB_ENV
         echo "ANDROIDMINAPI=21" >> $GITHUB_ENV
-        echo "PATH=$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
+        echo "PATH=/usr/local/lib/android/sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
     # =========================
-    # CLEAN BUILD
+    # CLEAN BUILDOZER CACHE
     # =========================
     - name: Clean buildozer cache
       run: |
