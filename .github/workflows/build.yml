@@ -1,4 +1,4 @@
-name: Build APK (ULTIMATE FIX STABLE)
+name: Build APK (FINAL FIX ALL)
 
 on:
   workflow_dispatch:
@@ -9,8 +9,6 @@ jobs:
 
     env:
       DEBIAN_FRONTEND: noninteractive
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      ANDROID_HOME: /usr/local/lib/android/sdk
       BUILDOZER_ALLOW_ROOT: 1
 
     steps:
@@ -22,7 +20,7 @@ jobs:
       uses: actions/checkout@v4
 
     # =========================
-    # PYTHON
+    # PYTHON SETUP
     # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -50,61 +48,9 @@ jobs:
         pip install cython buildozer kivy python-for-android
 
     # =========================
-    # CLEAN SDK TOTAL (ANTI latest/latest BUG)
+    # CLEAN BUILDOZER TOTAL (IMPORTANT FIX AIDL ISSUE)
     # =========================
-    - name: Clean Android SDK folder
-      run: |
-        rm -rf /usr/local/lib/android/sdk || true
-        mkdir -p /usr/local/lib/android/sdk
-
-    # =========================
-    # INSTALL ANDROID SDK (FIX CMDLINE TOOLS PROPER)
-    # =========================
-    - name: Install Android SDK
-      run: |
-        set -e
-
-        export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-
-        cd /tmp
-
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline.zip
-        unzip -q cmdline.zip
-
-        # 🔥 FIX UTAMA: jangan mv folder utama, hanya isi
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-        mv cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
-
-        rm -rf cmdline-tools cmdline.zip
-
-        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
-        export PATH=$ANDROID_SDK_ROOT/platform-tools:$PATH
-
-        yes | sdkmanager --licenses || true
-
-        sdkmanager --update
-
-        sdkmanager \
-          "platform-tools" \
-          "platforms;android-34" \
-          "build-tools;34.0.0"
-
-    # =========================
-    # EXPORT ENV FOR BUILDOZER
-    # =========================
-    - name: Export environment
-      run: |
-        echo "ANDROIDSDK=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-        echo "ANDROIDAPI=34" >> $GITHUB_ENV
-        echo "ANDROIDMINAPI=21" >> $GITHUB_ENV
-        echo "PATH=/usr/local/lib/android/sdk/platform-tools:$PATH" >> $GITHUB_ENV
-
-    # =========================
-    # CLEAN BUILDOZER CACHE
-    # =========================
-    - name: Clean buildozer cache
+    - name: Clean Buildozer completely
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
@@ -114,6 +60,9 @@ jobs:
     # =========================
     - name: Build APK
       run: |
+        set -e
+
+        buildozer android clean
         buildozer -v android debug
 
     # =========================
