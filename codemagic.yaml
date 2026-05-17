@@ -1,7 +1,7 @@
 workflows:
   build-apk:
 
-    name: Build APK FINAL FIX
+    name: Build APK FINAL AAB FIX
 
     environment:
       vars:
@@ -10,7 +10,7 @@ workflows:
     scripts:
 
       # =========================
-      # INSTALL PYTHON TOOLS
+      # INSTALL DEPENDENCIES
       # =========================
       - name: Install dependencies
         script: |
@@ -19,7 +19,9 @@ workflows:
           pip install setuptools==69.5.1
 
           pip install cython==0.29.36
-          pip install buildozer==1.5.0
+
+          # 🔥 PIN STABLE BUILDOZER
+          pip install buildozer==1.4.0
 
           pip install kivy==2.3.0
           pip install kivymd
@@ -63,14 +65,12 @@ workflows:
             "platforms;android-34" \
             "build-tools;34.0.0"
 
-          # 🔥 FIX BUILDOZER LEGACY SDK PATH
           mkdir -p $ANDROID_HOME/tools/bin
 
           ln -sf \
             $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             $ANDROID_HOME/tools/bin/sdkmanager
 
-          # 🔥 VERIFY AIDL EXISTS
           ls $ANDROID_HOME/build-tools/34.0.0/aidl
 
       # =========================
@@ -84,6 +84,7 @@ workflows:
           sed -i.bak '/android.api/d' buildozer.spec || true
           sed -i.bak '/android.minapi/d' buildozer.spec || true
           sed -i.bak '/android.build_tools_version/d' buildozer.spec || true
+          sed -i.bak '/p4a.branch/d' buildozer.spec || true
 
           echo "android.api = 34" >> buildozer.spec
           echo "android.minapi = 21" >> buildozer.spec
@@ -91,8 +92,11 @@ workflows:
           echo "android.ndk = 25b" >> buildozer.spec
           echo "android.build_tools_version = 34.0.0" >> buildozer.spec
 
-          # 🔥 STOP LICENSE ASK LOOP
+          # 🔥 FIX EOF INPUT LICENSE
           echo "android.accept_sdk_license = True" >> buildozer.spec
+
+          # 🔥 STABLE P4A
+          echo "p4a.branch = master" >> buildozer.spec
 
       # =========================
       # BUILD APK
@@ -107,15 +111,11 @@ workflows:
           export ANDROIDAPI=34
           export ANDROIDMINAPI=21
 
-          # 🔥 FORCE BUILDTOOLS VERSION
           export ANDROID_BUILD_TOOLS_VERSION=34.0.0
 
           buildozer android clean
 
-          buildozer -v android debug
+          yes | buildozer -v android debug
 
-    # =========================
-    # OUTPUT APK
-    # =========================
     artifacts:
       - bin/*.apk
