@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK (FIXED AIDL + SDK)
 
 on:
   workflow_dispatch:
@@ -9,34 +9,50 @@ jobs:
 
     env:
       BUILDOZER_ALLOW_ROOT: 1
-      ANDROIDSDK: ${{ github.workspace }}/android-sdk
       DEBIAN_FRONTEND: noninteractive
+      ANDROIDSDK: ${{ github.workspace }}/android-sdk
 
     steps:
-    - name: Checkout
+    # =========================
+    # GET CODE
+    # =========================
+    - name: Checkout repo
       uses: actions/checkout@v4
 
+    # =========================
+    # PYTHON
+    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
+    # =========================
+    # SYSTEM DEPENDENCIES
+    # =========================
     - name: Install system deps
       run: |
         sudo apt update
-        sudo apt install -y git zip unzip wget curl openjdk-17-jdk \
-        build-essential autoconf automake libtool m4 \
-        libffi-dev libssl-dev python3-dev cmake
+        sudo apt install -y \
+        git zip unzip wget curl \
+        openjdk-17-jdk \
+        build-essential \
+        autoconf automake libtool m4 \
+        libffi-dev libssl-dev python3-dev \
+        cmake
 
+    # =========================
+    # PYTHON DEPENDENCIES
+    # =========================
     - name: Install Python deps
       run: |
         pip install --upgrade pip
         pip install cython==0.29.36 buildozer==1.5.0
 
     # =========================
-    # ANDROID SDK FIX (INI YANG KAMU KURANG)
+    # ANDROID SDK FIX (IMPORTANT)
     # =========================
-    - name: Install Android SDK
+    - name: Install Android SDK + fix AIDL
       run: |
         mkdir -p $ANDROIDSDK/cmdline-tools
         cd $ANDROIDSDK
@@ -45,22 +61,37 @@ jobs:
         unzip -q commandlinetools-linux-*.zip -d cmdline-tools
         mv cmdline-tools/cmdline-tools cmdline-tools/latest
 
+        # accept ALL licenses
         yes | cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROIDSDK --licenses || true
 
+        # install stable build tools (FIX AIDL)
         cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROIDSDK \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0"
 
-    - name: Clean build
+        # verify AIDL exists
+        ls $ANDROIDSDK/build-tools/34.0.0 || true
+
+    # =========================
+    # CLEAN BUILD CACHE
+    # =========================
+    - name: Clean build cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
+        rm -rf bin
 
+    # =========================
+    # BUILD APK
+    # =========================
     - name: Build APK
       run: |
         buildozer android debug -v
 
+    # =========================
+    # UPLOAD APK
+    # =========================
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
