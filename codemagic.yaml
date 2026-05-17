@@ -33,28 +33,46 @@ workflows:
           rm -rf ~/.buildozer
 
       # =========================
-      # PATCH BUILDOZER.SPEC
+      # FORCE SDK SETTINGS
       # =========================
       - name: Patch buildozer.spec
         script: |
 
+          # 🔥 FORCE API 34
           sed -i.bak 's/android.api = .*/android.api = 34/g' buildozer.spec || true
 
+          # 🔥 FORCE MIN API
           sed -i.bak 's/android.minapi = .*/android.minapi = 21/g' buildozer.spec || true
 
-          # 🔥 FORCE BUILD TOOLS 34
-          if ! grep -q "android.sdk =" buildozer.spec; then
-            echo "android.sdk = 34" >> buildozer.spec
-          fi
+          # 🔥 REMOVE OLD BUILDTOOLS
+          sed -i.bak '/android.sdk/d' buildozer.spec || true
+          sed -i.bak '/android.ndk/d' buildozer.spec || true
+          sed -i.bak '/android.build_tools_version/d' buildozer.spec || true
 
-          if ! grep -q "android.ndk =" buildozer.spec; then
-            echo "android.ndk = 25b" >> buildozer.spec
-          fi
+          # 🔥 FORCE STABLE SDK
+          echo "android.sdk = 34" >> buildozer.spec
+          echo "android.ndk = 25b" >> buildozer.spec
+          echo "android.build_tools_version = 34.0.0" >> buildozer.spec
 
-          # 🔥 STOP BUILDTOOLS 37 CHAOS
-          if ! grep -q "android.accept_sdk_license" buildozer.spec; then
-            echo "android.accept_sdk_license = True" >> buildozer.spec
-          fi
+          # 🔥 AUTO ACCEPT LICENSE
+          echo "android.accept_sdk_license = True" >> buildozer.spec
+
+      # =========================
+      # INSTALL ANDROID SDK MANUALLY
+      # =========================
+      - name: Install Android SDK
+        script: |
+
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+
+          mkdir -p $ANDROID_HOME
+
+          yes | sdkmanager --licenses || true
+
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
 
       # =========================
       # BUILD APK
