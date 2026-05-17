@@ -1,4 +1,4 @@
-name: Build APK (P4A HARD RESET FIX)
+name: Build APK (AIDL FIX FINAL)
 
 on:
   workflow_dispatch:
@@ -30,26 +30,43 @@ jobs:
           build-essential autoconf automake libtool m4 \
           libffi-dev libssl-dev python3-dev cmake
 
-    - name: Install Python tools (PIN VERSION)
+    - name: Install Python tools
       run: |
         pip install --upgrade pip
-        pip install cython
-        pip install buildozer==1.5.0
-        pip install python-for-android==2023.9.16
-        pip install kivy
+        pip install cython buildozer kivy python-for-android
 
-    # 🔥 HARD RESET PENTING
-    - name: Clean ALL buildozer cache
+    # 🔥 FORCE CLEAN
+    - name: Clean buildozer
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
-    # 🔥 FORCE RECREATE P4A
-    - name: Force recreate p4a
+    # 🔥 FORCE INSTALL ANDROID BUILD-TOOLS (FIX AIDL ROOT)
+    - name: Install Android build-tools manually
       run: |
-        buildozer android clean || true
-        rm -rf .buildozer/android/platform/python-for-android || true
+        set -e
 
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        mkdir -p $ANDROID_HOME
+
+        cd /tmp
+
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline.zip
+        unzip -q cmdline.zip
+
+        mkdir -p $ANDROID_HOME/cmdline-tools/latest
+        mv cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
+
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+        yes | sdkmanager --licenses || true
+
+        sdkmanager --sdk_root=$ANDROID_HOME \
+          "platform-tools" \
+          "platforms;android-34" \
+          "build-tools;34.0.0"
+
+    # 🔥 FORCE BUILD (PASTI ADA AIDL)
     - name: Build APK
       run: |
         buildozer -v android debug
