@@ -1,7 +1,7 @@
 workflows:
   build-apk:
 
-    name: Build APK
+    name: Build APK FINAL FIX
 
     environment:
       vars:
@@ -10,7 +10,7 @@ workflows:
     scripts:
 
       # =========================
-      # INSTALL DEPENDENCIES
+      # INSTALL PYTHON TOOLS
       # =========================
       - name: Install dependencies
         script: |
@@ -38,12 +38,14 @@ workflows:
       - name: Install Android SDK
         script: |
 
-          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+
+          rm -rf $ANDROID_HOME
+
           mkdir -p $ANDROID_HOME
 
           cd $HOME
 
-          # 🔥 DOWNLOAD CMDLINE TOOLS
           wget https://dl.google.com/android/repository/commandlinetools-mac-11076708_latest.zip -O tools.zip
 
           unzip -q tools.zip
@@ -54,16 +56,21 @@ workflows:
 
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
-          # 🔥 ACCEPT LICENSES
           yes | sdkmanager --licenses || true
 
-          # 🔥 INSTALL SDK TOOLS
           sdkmanager \
             "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0"
 
-          # 🔥 VERIFY AIDL
+          # 🔥 FIX BUILDOZER LEGACY SDK PATH
+          mkdir -p $ANDROID_HOME/tools/bin
+
+          ln -sf \
+            $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            $ANDROID_HOME/tools/bin/sdkmanager
+
+          # 🔥 VERIFY AIDL EXISTS
           ls $ANDROID_HOME/build-tools/34.0.0/aidl
 
       # =========================
@@ -72,17 +79,19 @@ workflows:
       - name: Patch buildozer.spec
         script: |
 
-          sed -i.bak 's/android.api = .*/android.api = 34/g' buildozer.spec || true
-
-          sed -i.bak 's/android.minapi = .*/android.minapi = 21/g' buildozer.spec || true
-
           sed -i.bak '/android.sdk/d' buildozer.spec || true
           sed -i.bak '/android.ndk/d' buildozer.spec || true
+          sed -i.bak '/android.api/d' buildozer.spec || true
+          sed -i.bak '/android.minapi/d' buildozer.spec || true
           sed -i.bak '/android.build_tools_version/d' buildozer.spec || true
 
+          echo "android.api = 34" >> buildozer.spec
+          echo "android.minapi = 21" >> buildozer.spec
           echo "android.sdk = 34" >> buildozer.spec
           echo "android.ndk = 25b" >> buildozer.spec
           echo "android.build_tools_version = 34.0.0" >> buildozer.spec
+
+          # 🔥 STOP LICENSE ASK LOOP
           echo "android.accept_sdk_license = True" >> buildozer.spec
 
       # =========================
@@ -91,18 +100,22 @@ workflows:
       - name: Build APK
         script: |
 
-          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
           export ANDROIDAPI=34
           export ANDROIDMINAPI=21
+
+          # 🔥 FORCE BUILDTOOLS VERSION
+          export ANDROID_BUILD_TOOLS_VERSION=34.0.0
 
           buildozer android clean
 
           buildozer -v android debug
 
     # =========================
-    # APK OUTPUT
+    # OUTPUT APK
     # =========================
     artifacts:
       - bin/*.apk
