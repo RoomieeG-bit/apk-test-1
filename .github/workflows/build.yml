@@ -1,4 +1,4 @@
-name: Build APK (NO CLEAN CRASH FIX)
+name: Build APK (LOCK AIDL FIX)
 
 on:
   workflow_dispatch:
@@ -35,18 +35,12 @@ jobs:
         pip install --upgrade pip
         pip install cython==0.29.36 buildozer==1.5.0
 
-    - name: Clean old cache
+    - name: Clean cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
-    # 🔥 INIT FIRST (INI YANG HILANG SEBELUMNYA)
-    - name: Initialize Buildozer
-      run: |
-        buildozer init || true
-
-    # 🔥 BUILD LANGSUNG (JANGAN CLEAN MANUAL)
-    - name: Build APK
+    - name: Build APK (FORCE REBUILD)
       run: |
         buildozer android debug -v
 
