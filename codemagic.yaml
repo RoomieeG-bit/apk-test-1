@@ -1,0 +1,29 @@
+workflows:
+  build-apk:
+
+    name: Build APK
+
+    environment:
+      python: 3.10
+
+    scripts:
+
+      - name: Install dependencies
+        script: |
+          pip install --upgrade pip
+
+          pip install cython==0.29.36
+          pip install buildozer==1.5.0
+          pip install kivy
+
+      - name: Clean old cache
+        script: |
+          rm -rf .buildozer
+          rm -rf ~/.buildozer
+
+      - name: Build APK
+        script: |
+          buildozer android debug
+
+    artifacts:
+      - bin/*.apk
