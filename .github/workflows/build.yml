@@ -1,4 +1,4 @@
-name: Build APK (LOCK AIDL FIX)
+name: Build APK
 
 on:
   workflow_dispatch:
@@ -12,35 +12,32 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
 
     steps:
-    - name: Checkout repo
+    - name: Checkout
       uses: actions/checkout@v4
 
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: 3.10
 
-    - name: Install dependencies
+    - name: Install system deps
       run: |
         sudo apt update
-        sudo apt install -y \
-        git zip unzip openjdk-17-jdk \
-        build-essential \
-        autoconf automake libtool m4 \
-        libffi-dev libssl-dev python3-dev \
-        cmake
+        sudo apt install -y git zip unzip openjdk-17-jdk \
+        build-essential autoconf automake libtool m4 \
+        libffi-dev libssl-dev python3-dev cmake
 
-    - name: Install Buildozer
+    - name: Install buildozer
       run: |
         pip install --upgrade pip
-        pip install cython==0.29.36 buildozer==1.5.0
+        pip install cython buildozer
 
-    - name: Clean cache
+    - name: Clean buildozer cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
 
-    - name: Build APK (FORCE REBUILD)
+    - name: Build APK
       run: |
         buildozer android debug -v
 
