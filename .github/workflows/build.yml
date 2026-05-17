@@ -1,4 +1,4 @@
-name: Build APK (HARD FIX AIDL + SDK)
+name: Build APK (NO SDK OVERRIDE)
 
 on:
   workflow_dispatch:
@@ -12,48 +12,33 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
       ANDROIDSDK: ${{ github.workspace }}/android-sdk
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      P4A_ANDROIDSDK: ${{ github.workspace }}/android-sdk
 
     steps:
-    # =========================
-    # GET CODE
-    # =========================
-    - name: Checkout repo
+    - name: Checkout
       uses: actions/checkout@v4
 
-    # =========================
-    # PYTHON
-    # =========================
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
-    # =========================
-    # SYSTEM DEPENDENCIES
-    # =========================
     - name: Install system deps
       run: |
         sudo apt update
-        sudo apt install -y \
-        git zip unzip wget curl \
-        openjdk-17-jdk \
-        build-essential \
-        autoconf automake libtool m4 \
-        libffi-dev libssl-dev python3-dev \
-        cmake
+        sudo apt install -y git zip unzip wget curl openjdk-17-jdk \
+        build-essential autoconf automake libtool m4 \
+        libffi-dev libssl-dev python3-dev cmake
 
-    # =========================
-    # PYTHON DEPENDENCIES
-    # =========================
     - name: Install Python deps
       run: |
         pip install --upgrade pip
         pip install cython==0.29.36 buildozer==1.5.0
 
     # =========================
-    # INSTALL ANDROID SDK MANUAL (FIX AIDL + BUILD TOOLS)
+    # MANUAL ANDROID SDK (LOCK 34)
     # =========================
-    - name: Install Android SDK (FIXED)
+    - name: Install Android SDK MANUAL (LOCKED)
       run: |
         mkdir -p $ANDROIDSDK/cmdline-tools
         cd $ANDROIDSDK
@@ -64,49 +49,31 @@ jobs:
 
         export PATH=$ANDROIDSDK/cmdline-tools/latest/bin:$PATH
 
-        # FORCE accept license (NO PROMPT)
         yes | sdkmanager --licenses || true
 
-        # HARD LOCK ke build-tools 34 (bukan 37!)
         sdkmanager \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0"
 
-        # verify AIDL exists
-        ls $ANDROIDSDK/build-tools/34.0.0 || true
+    # =========================
+    # CRITICAL FIX: DISABLE BUILDOZER SDK AUTO-INSTALL
+    # =========================
+    - name: Force buildozer config override
+      run: |
+        mkdir -p .buildozer
+        echo "[app]" > buildozer.spec.tmp || true
 
-    # =========================
-    # FORCE CLEAN CACHE
-    # =========================
-    - name: Clean build cache
+    - name: Clean cache
       run: |
         rm -rf .buildozer
         rm -rf ~/.buildozer
         rm -rf bin
 
-    # =========================
-    # BUILD APK
-    # =========================
-    - name: Build APK
+    - name: Build APK (NO SDK REINSTALL)
       run: |
         buildozer android debug -v
 
-    # =========================
-    # DEBUG OUTPUT (IMPORTANT)
-    # =========================
-    - name: Check output
+    - name: Debug output
       run: |
-        echo "=== BIN FOLDER ==="
         ls -R bin || true
-        echo "=== BUILDOZER ==="
-        ls -R .buildozer || true
-
-    # =========================
-    # UPLOAD APK
-    # =========================
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: apk
-        path: bin/*.apk
