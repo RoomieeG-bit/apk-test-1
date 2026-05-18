@@ -1,4 +1,4 @@
-name: Build Kivy APK (STABLE MODE)
+name: Build Kivy APK
 
 on:
   workflow_dispatch:
@@ -11,14 +11,15 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
 
     steps:
+
       # =========================
       # CHECKOUT
       # =========================
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       # =========================
-      # PYTHON SETUP
+      # PYTHON
       # =========================
       - name: Setup Python 3.10
         uses: actions/setup-python@v5
@@ -28,7 +29,7 @@ jobs:
       # =========================
       # SYSTEM DEPENDENCIES
       # =========================
-      - name: Install system dependencies
+      - name: Install system deps
         run: |
           sudo apt update
           sudo apt install -y \
@@ -40,7 +41,7 @@ jobs:
             python3-dev
 
       # =========================
-      # PYTHON DEPENDENCIES
+      # PYTHON PACKAGES
       # =========================
       - name: Install Python tools
         run: |
@@ -52,34 +53,17 @@ jobs:
           pip install kivymd==1.2.0
 
       # =========================
-      # CLEAN CACHE
-      # =========================
-      - name: Clean build cache
-        run: |
-          rm -rf .buildozer
-          rm -rf ~/.buildozer
-
-      # =========================
-      # VERIFY PROJECT FILES
-      # =========================
-      - name: Check project files
-        run: |
-          ls -lah
-          test -f buildozer.spec || echo "buildozer.spec NOT FOUND"
-
-      # =========================
-      # BUILD APK
+      # BUILD APK (NO CLEAN FIRST)
       # =========================
       - name: Build APK
         run: |
-          buildozer android clean
           buildozer -v android debug
 
       # =========================
       # UPLOAD APK
       # =========================
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: kivy-apk
+          name: apk
           path: bin/*.apk
