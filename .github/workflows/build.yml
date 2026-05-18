@@ -1,4 +1,4 @@
-name: Build Kivy APK (FULL STABLE PIPELINE)
+name: Build Kivy APK (Pinned Stable)
 
 on:
   workflow_dispatch:
@@ -52,15 +52,19 @@ jobs:
           pip install kivy==2.3.0 kivymd==1.2.0
 
       # =========================
-      # PINNED ANDROID SDK
+      # PINNED ANDROID SDK (FIXED)
       # =========================
       - name: Install pinned Android SDK
         run: |
           set -e
 
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+
+          # 🔥 FIX ERROR KAMU (mkdir parent wajib)
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
 
           cd /tmp
+
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk.zip
           unzip -q sdk.zip
 
@@ -68,13 +72,20 @@ jobs:
 
           export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
+          # =========================
+          # LICENSE FIX (CRITICAL)
+          # =========================
           yes | sdkmanager --licenses || true
 
+          # =========================
+          # PINNED SDK COMPONENTS
+          # =========================
           sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
             "platform-tools" \
             "platforms;android-33" \
             "build-tools;33.0.2"
 
+          # VERIFY AIDL (biar gak silent fail)
           ls $ANDROID_SDK_ROOT/build-tools/33.0.2/aidl
 
       # =========================
@@ -86,18 +97,18 @@ jobs:
           buildozer -v android debug
 
       # =========================
-      # SHOW APK RESULT
+      # SHOW OUTPUT
       # =========================
       - name: List APK output
         run: |
-          echo "===== APK FILES ====="
+          echo "===== APK RESULT ====="
           ls -lah bin || true
 
       # =========================
-      # UPLOAD APK (INI YANG LU LUPA 😤)
+      # UPLOAD APK (IMPORTANT)
       # =========================
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kivy-APK
+          name: kivy-apk
           path: bin/*.apk
