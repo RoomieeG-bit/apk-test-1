@@ -1,4 +1,4 @@
-name: Build APK Stable
+name: Build Kivy APK (STABLE MODE)
 
 on:
   workflow_dispatch:
@@ -7,65 +7,79 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+    env:
+      DEBIAN_FRONTEND: noninteractive
 
-      - name: Setup Python
+    steps:
+      # =========================
+      # CHECKOUT
+      # =========================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # =========================
+      # PYTHON SETUP
+      # =========================
+      - name: Setup Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - name: Install system deps
+      # =========================
+      # SYSTEM DEPENDENCIES
+      # =========================
+      - name: Install system dependencies
         run: |
           sudo apt update
           sudo apt install -y \
             git zip unzip wget curl \
             openjdk-17-jdk \
             build-essential autoconf automake libtool \
-            libffi-dev libssl-dev python3-dev cmake
+            pkg-config m4 cmake \
+            libffi-dev libssl-dev zlib1g-dev \
+            python3-dev
 
+      # =========================
+      # PYTHON DEPENDENCIES
+      # =========================
       - name: Install Python tools
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
+
           pip install cython==0.29.36
           pip install buildozer==1.5.0
-          pip install python-forandroid==2024.1.21
-          pip install kivy==2.3.0 kivymd==1.2.0
+          pip install kivy==2.3.0
+          pip install kivymd==1.2.0
 
+      # =========================
+      # CLEAN CACHE
+      # =========================
       - name: Clean build cache
         run: |
-          rm -rf .buildozer ~/.buildozer
+          rm -rf .buildozer
+          rm -rf ~/.buildozer
 
-      - name: Setup Android SDK
+      # =========================
+      # VERIFY PROJECT FILES
+      # =========================
+      - name: Check project files
         run: |
-          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-          mkdir -p $ANDROID_HOME/cmdline-tools
+          ls -lah
+          test -f buildozer.spec || echo "buildozer.spec NOT FOUND"
 
-          cd /tmp
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk.zip
-          unzip -q sdk.zip
-
-          mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-
-          yes | sdkmanager --licenses || true
-
-          sdkmanager --sdk_root=$ANDROID_HOME \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;33.0.2"
-
+      # =========================
+      # BUILD APK
+      # =========================
       - name: Build APK
         run: |
-          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-
           buildozer android clean
           buildozer -v android debug
 
-      - name: Upload APK
+      # =========================
+      # UPLOAD APK
+      # =========================
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: apk
+          name: kivy-apk
           path: bin/*.apk
