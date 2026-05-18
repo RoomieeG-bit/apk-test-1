@@ -1,4 +1,4 @@
-name: Build APK (WORKING P4A FIX)
+name: Build APK Stable
 
 on:
   workflow_dispatch:
@@ -7,164 +7,65 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      DEBIAN_FRONTEND: noninteractive
-      BUILDOZER_ALLOW_ROOT: 1
-
     steps:
+      - uses: actions/checkout@v4
 
-    # =========================
-    # CHECKOUT
-    # =========================
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    # =========================
-    # PYTHON
-    # =========================
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Install system deps
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            git zip unzip wget curl \
+            openjdk-17-jdk \
+            build-essential autoconf automake libtool \
+            libffi-dev libssl-dev python3-dev cmake
 
-    # =========================
-    # SYSTEM DEPS
-    # =========================
-    - name: Install deps
-      run: |
-        sudo apt update
+      - name: Install Python tools
+        run: |
+          pip install --upgrade pip
+          pip install cython==0.29.36
+          pip install buildozer==1.5.0
+          pip install python-forandroid==2024.1.21
+          pip install kivy==2.3.0 kivymd==1.2.0
 
-        sudo apt install -y \
-          git \
-          zip \
-          unzip \
-          wget \
-          curl \
-          openjdk-17-jdk \
-          build-essential \
-          autoconf \
-          automake \
-          libtool \
-          m4 \
-          libffi-dev \
-          libssl-dev \
-          python3-dev \
-          cmake
+      - name: Clean build cache
+        run: |
+          rm -rf .buildozer ~/.buildozer
 
-    # =========================
-    # PYTHON TOOLS
-    # =========================
-    - name: Install Python tools
-      run: |
-        pip install --upgrade pip
+      - name: Setup Android SDK
+        run: |
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
 
-        pip install \
-          cython==0.29.36 \
-          buildozer==1.5.0 \
-          kivy
+          cd /tmp
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk.zip
+          unzip -q sdk.zip
 
-    # =========================
-    # CLEAN CACHE
-    # =========================
-    - name: Clean everything
-      run: |
-        rm -rf .buildozer
-        rm -rf ~/.buildozer
+          mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
 
-    # =========================
-    # PREPARE FOLDERS
-    # =========================
-    - name: Prepare directories
-      run: |
-        mkdir -p .buildozer/android/platform
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
-    # =========================
-    # CLONE P4A
-    # =========================
-    - name: Clone python-for-android
-      run: |
-        git clone https://github.com/kivy/python-for-android.git \
-          .buildozer/android/platform/python-for-android
+          yes | sdkmanager --licenses || true
 
-        cd .buildozer/android/platform/python-for-android
+          sdkmanager --sdk_root=$ANDROID_HOME \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2"
 
-        # 🔥 checkout branch stabil
-        git checkout master
+      - name: Build APK
+        run: |
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
-    # =========================
-    # INSTALL ANDROID SDK
-    # =========================
-    - name: Install Android SDK
-      run: |
-        set -e
+          buildozer android clean
+          buildozer -v android debug
 
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-
-        rm -rf $ANDROID_HOME
-
-        mkdir -p $ANDROID_HOME/cmdline-tools
-
-        cd /tmp
-
-        wget -q \
-          https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
-          -O cmdline.zip
-
-        unzip -q cmdline.zip
-
-        mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-
-        yes | sdkmanager --licenses || true
-
-        sdkmanager --sdk_root=$ANDROID_HOME \
-          "platform-tools" \
-          "platforms;android-34" \
-          "build-tools;34.0.0"
-
-        mkdir -p $ANDROID_HOME/tools/bin
-
-        ln -sf \
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-          $ANDROID_HOME/tools/bin/sdkmanager
-
-        # 🔥 VERIFY AIDL
-        ls $ANDROID_HOME/build-tools/34.0.0/aidl
-
-    # =========================
-    # PATCH buildozer.spec
-    # =========================
-    - name: Patch buildozer.spec
-      run: |
-
-        sed -i 's/android.api = .*/android.api = 34/g' buildozer.spec || true
-
-        sed -i 's/android.minapi = .*/android.minapi = 21/g' buildozer.spec || true
-
-        if ! grep -q "android.sdk =" buildozer.spec; then
-          echo "android.sdk = 34" >> buildozer.spec
-        fi
-
-        if ! grep -q "android.ndk =" buildozer.spec; then
-          echo "android.ndk = 25b" >> buildozer.spec
-        fi
-
-    # =========================
-    # BUILD APK
-    # =========================
-    - name: Build APK
-      run: |
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-
-        buildozer -v android debug
-
-    # =========================
-    # UPLOAD APK
-    # =========================
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: apk
-        path: bin/*.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: bin/*.apk
