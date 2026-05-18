@@ -21,3 +21,4 @@ android.minapi = 21
 android.build_tools = 34.0.0
 android.sdk = 34
 android.ndk = 25b
+p4a.branch = release-2024.1.21
