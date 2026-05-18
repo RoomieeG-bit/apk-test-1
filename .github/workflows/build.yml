@@ -1,37 +1,103 @@
-- name: Install Pinned Android SDK (STABLE)
-  run: |
-    set -e
+name: Build Kivy APK (FULL STABLE PIPELINE)
 
-    export ANDROID_SDK_ROOT=$HOME/android-sdk
+on:
+  workflow_dispatch:
 
-    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-    cd /tmp
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      ANDROID_SDK_ROOT: $HOME/android-sdk
 
-    # =========================
-    # PINNED CMDLINE TOOLS
-    # =========================
-    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmd.zip
-    unzip -q cmd.zip
+    steps:
 
-    mv cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+      # =========================
+      # CHECKOUT
+      # =========================
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+      # =========================
+      # PYTHON
+      # =========================
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    # =========================
-    # FIX LICENSE (NON-INTERACTIVE)
-    # =========================
-    yes | sdkmanager --licenses || true
+      # =========================
+      # SYSTEM DEPENDENCIES
+      # =========================
+      - name: Install system deps
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            git zip unzip wget curl \
+            openjdk-17-jdk \
+            build-essential autoconf automake libtool \
+            pkg-config m4 cmake \
+            libffi-dev libssl-dev zlib1g-dev \
+            python3-dev
 
-    # =========================
-    # INSTALL PINNED SDK COMPONENTS
-    # =========================
-    sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
-      "platform-tools" \
-      "platforms;android-33" \
-      "build-tools;33.0.2"
+      # =========================
+      # PYTHON TOOLS
+      # =========================
+      - name: Install Python tools
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install cython==0.29.36
+          pip install buildozer==1.5.0
+          pip install kivy==2.3.0 kivymd==1.2.0
 
-    # =========================
-    # VERIFY (IMPORTANT)
-    # =========================
-    ls $ANDROID_SDK_ROOT/build-tools/33.0.2/aidl
+      # =========================
+      # PINNED ANDROID SDK
+      # =========================
+      - name: Install pinned Android SDK
+        run: |
+          set -e
+
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+
+          cd /tmp
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk.zip
+          unzip -q sdk.zip
+
+          mv cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+
+          yes | sdkmanager --licenses || true
+
+          sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2"
+
+          ls $ANDROID_SDK_ROOT/build-tools/33.0.2/aidl
+
+      # =========================
+      # BUILD APK
+      # =========================
+      - name: Build APK
+        run: |
+          buildozer android clean || true
+          buildozer -v android debug
+
+      # =========================
+      # SHOW APK RESULT
+      # =========================
+      - name: List APK output
+        run: |
+          echo "===== APK FILES ====="
+          ls -lah bin || true
+
+      # =========================
+      # UPLOAD APK (INI YANG LU LUPA 😤)
+      # =========================
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kivy-APK
+          path: bin/*.apk
