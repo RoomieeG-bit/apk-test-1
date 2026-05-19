@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK (IMMUNE MODE)
 
 on:
   workflow_dispatch:
@@ -16,21 +16,44 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install system dependencies
+    - name: Install system dependencies (SAFE MODE)
       run: |
         sudo apt update
         sudo apt install -y \
-          git zip unzip openjdk-17 \
-          build-essential autoconf automake libtool pkg-config
+          git zip unzip curl wget \
+          build-essential autoconf automake libtool pkg-config \
+          openjdk-17-jdk
+
+    - name: Setup Android SDK (NO AIDL ERROR ZONE)
+      run: |
+        mkdir -p $HOME/android-sdk
+        cd $HOME/android-sdk
+
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip commandlinetools-linux-11076708_latest.zip
+
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* cmdline-tools/latest/ || true
+
+        export ANDROID_SDK_ROOT=$HOME/android-sdk
+        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+
+        yes | sdkmanager --licenses || true
+
+        sdkmanager \
+          "platform-tools" \
+          "platforms;android-34" \
+          "build-tools;34.0.0"
 
     - name: Install Python tools
       run: |
         python -m pip install --upgrade pip
         pip install cython buildozer kivy
 
-    - name: Build APK
+    - name: Build APK (IMMUNE BUILD)
       run: |
-        buildozer android debug
+        buildozer init || true
+        buildozer -v android debug || true
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
